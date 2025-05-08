@@ -1,0 +1,67 @@
+---
+## Install linuxcertreq and jirainstall roles for vars to autopopulate
+- name: Include vars from other playbooks
+  include_vars:
+    file: "{{ item }}"
+  loop:
+    - roles/linuxcertreq/vars/main.yml
+    - roles/jirainstall/vars/main.yml
+
+- name: Fail if custom_certpath not set
+  assert: 
+    that: custom_certpath is defined
+    fail_msg: "{{  custom_certpath }} is not defined."
+    success_msg: "{{  custom_certpath }} is defined."
+
+- name: Create and import pkcs12 keystore for jira
+  community.general.java_cert:
+    pkcs12_path: "{{ custom_certpath }}{{ inventory_hostname }}.p12"
+    pkcs12_password: changeit
+    cert_alias: jira
+    keystore_path: "{{ jira_home }}/jira.jks"
+    keystore_pass: changeit
+    keystore_create: true
+    state: present
+    executable: "{{ java_home }}/bin/keytool"
+
+- name: Convert rootca pem into importable cer
+  shell: openssl x509 -inform PEM -in "/etc/pki/ca-trust/source/anchors/{{ pki_ca_host }}.pem" -outform DER -out "{{ custom_certpath }}rootca.cer"
+
+- name: Import RootCA into keystore
+  community.general.java_cert:
+    cert_alias: RootCA
+    cert_path: "{{ custom_certpath }}rootca.cer"
+    keystore_path: "{{ jira_home }}/jira.jks"
+    keystore_pass: changeit
+    state: present
+    trust_cacert: true
+    executable: "{{ java_home }}/bin/keytool"
+
+- name: Import RootCA into default keystore
+  community.general.java_cert:
+    cert_alias: RootCA
+    cert_path: "{{ custom_certpath }}rootca.cer"
+    keystore_path: "{{ java_home }}/cacerts"
+    keystore_pass: changeit
+    state: present
+    trust_cacert: true
+    executable: "{{ java_home }}/bin/keytool"
+
+- name: backup old server.xml
+  copy: 
+    src: "{{ serverxml }}"
+    dest: /tmp/server.xml.old
+    remote_src: yes
+
+- name: blow up server.xml to make way for the new guy
+  file:
+    path: "{{ serverxml }}"
+    state: absent
+
+- name: assemble fragments into new server.xml
+  assemble: 
+    src: roles/jira-certconfig/templates
+    dest: "{{ serverxml }}"
+    mode: '0644'
+    owner: root
+    group: root

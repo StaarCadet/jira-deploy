@@ -1,0 +1,18 @@
+## CONFIGURE THESE
+wildcardpath: '{{ jira_home }}wildcard.jks'
+wildcardpass: changeit ##default value is changeit
+domain: example.com
+baseurl: "jira.{{ domain }}" #if you're feeling extrafancy you could make it DTLMIG3DJIR1M.domain (please don't)
+## Optionally Configurable
+installation: /opt/atlassian/
+link: /opt/atlassian/current
+jira_home: /jirahome/
+java_home: /opt/java/jdk/
+## File versioning for upgrade
+tarfile: atlassian-jira-software-10.3.4.tar.gz
+foldername: atlassian-jira-software-10.3.4-standalone
+jdkname: jdk-17.0.4_linux-x64_bin.tar.gz
+## Generally don't change below this line
+appprops: /opt/atlassian/current/atlassian-jira/WEB-INF/classes/jira-application.properties
+serverxml: /opt/atlassian/current/conf/server.xml
+setenv: /opt/atlassian/current/bin/setenv.sh

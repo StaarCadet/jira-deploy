@@ -1,0 +1,6 @@
+- name: configure jira certificates
+  hosts: all
+  gather_facts: true
+  roles:
+    - linuxcertreq
+    - jira-certconfig

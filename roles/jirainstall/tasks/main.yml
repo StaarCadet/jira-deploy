@@ -1,0 +1,114 @@
+---
+- name: Create needed directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - "{{ installation }}"
+    - "{{ jira_home }}"
+    - "{{ java_home }}"
+
+- name: Copy JIRA tar file to the server
+  copy:
+    src: "files/{{ tarfile }}"
+    dest: "{{ installation }}{{ tarfile }}"
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Extract tarball
+  shell: "tar xf '{{ installation }}{{ tarfile }}' -C '{{ installation }}'"
+
+- name: Create symbolic link for current JIRA
+  file:
+    src: "{{ installation }}{{ foldername }}"
+    dest: "{{ link }}"
+    state: link
+
+- name: append home folder to file
+  lineinfile:
+    path: "{{ appprops }}"
+    regexp: "^jira.home = "
+    line: 'jira.home = {{ jirahome }}'
+
+- name: Copy java tar file to the server
+  copy:
+    src: "files/{{ jdkname }}"
+    dest: "{{ java_home }}{{ jdkname }}"
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: create Java home and unpack item
+  ansible.builtin.shell: "tar xf '{{ java_home }}{{ jdkname }}' -C '{{ java_home }}' --strip-components=1"
+
+- name: append java home to file
+  blockinfile:
+    path: "{{ setenv }}"
+    insertafter: "BOF"
+    block: | 
+          JAVA_HOME="{{ java_home }}"
+          PATH="{{ java_home }}/bin:$PATH"
+
+- name: fancy memory stuff
+  block:
+  - name: Gather total system memory in kilobytes
+    ansible.builtin.shell: "grep MemTotal /proc/meminfo | awk '{print $2}'"
+    register: mem_total_kb
+  
+  - name: Convert total memory to megabytes
+    ansible.builtin.set_fact:
+      mem_total_mb: "{{ (mem_total_kb.stdout | int) // 1024 }}"
+  
+  - name: Calculate half of total memory in MB
+    ansible.builtin.set_fact:
+      half_mem: "{{ mem_total_mb | int // 2 }}"
+  
+  - name: Replace memory value in configuration file
+    lineinfile:
+      path: "{{ setenv }}"
+      regexp: '2048m'
+      line: 'JVM_MAXIMUM_MEMORY="{{ half_mem }}m"'
+ 
+  - name: Replace memory value in configuration file
+    lineinfile:
+      path: "{{ setenv }}"
+      regexp: '384m'
+      line: 'JVM_MINIMUM_MEMORY="2048m"'
+
+- name: Ensure JIRA user owns the installation and home directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+    owner: root
+    group: root
+  loop:
+    - "{{ installation }}"
+    - "{{ jira_home }}"
+    - "{{ java_home }}"
+
+- name: Set up JIRA service
+  copy:
+    content: |
+      [Unit]
+      Description=Atlassian JIRA
+      After=network.target
+      [Service]
+      Type=forking
+      User=root
+      Group=root
+      Environment=JIRA_HOME={{ jira_home }}
+      Environment=JAVA_HOME={{ java_home }}
+      ExecStart={{ installation }}/current/bin/start-jira.sh
+      ExecStop={{ installation }}/current/bin/stop-jira.sh
+      Restart=on-abort
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/jira.service
+    owner: root
+    group: root
+    mode: '0644'

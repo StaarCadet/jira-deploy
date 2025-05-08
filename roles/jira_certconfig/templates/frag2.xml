@@ -1,0 +1,15 @@
+    <!-- 
+             ==============================================================================================================
+             HTTPs - Directly connect to Jira via Apache over HTTPs
+             ==============================================================================================================
+            -->
+            <Connector relaxedPathChars="[]|" relaxedQueryChars="[]|{}^&#x5c;&#x60;&quot;&lt;&gt;" 
+                       port="443" protocol="org.apache.coyote.http11.Http11NioProtocol"
+                       maxHttpHeaderSize="8192" SSLEnabled="true"
+                       maxThreads="150" minSpareThreads="25"
+                       enableLookups="false" disableUploadTimeout="true"
+                       acceptCount="100" scheme="https" secure="true"
+                       sslEnabledProtocols="TLSv1.2,TLSv1.3"
+                       clientAuth="false" useBodyEncodingForURI="true"
+                       keyAlias="jira" keystoreFile="{{ jira_home }}/jira.jks" 
+                       keystorePass="changeit" keystoreType="PKCS12"/>

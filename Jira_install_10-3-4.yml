@@ -1,0 +1,13 @@
+- name: Install and configure atlassian jira software
+  hosts: all
+  gather_facts: true
+  tasks:
+    - include_role:
+        name: jirainstall
+
+    - include_role:
+        name: linux_certreq
+
+    - include_role:
+        name: jira_certconfig
+      when: custom_certpath is defined

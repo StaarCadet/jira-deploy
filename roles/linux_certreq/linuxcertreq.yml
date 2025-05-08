@@ -1,0 +1,5 @@
+- name: requests a cert on behalf of a server and downloads it appropriately
+  hosts: all
+  gather_facts: true
+  roles:
+    - linuxcertreq
